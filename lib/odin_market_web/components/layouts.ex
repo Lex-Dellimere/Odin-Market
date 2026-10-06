@@ -1,160 +1,230 @@
 defmodule OdinMarketWeb.Layouts do
   @moduledoc """
-  This module holds layouts and related functionality
-  used by your application.
+  Application shell: navbar, page, and footer.
   """
   use OdinMarketWeb, :html
 
-  # Embed all files in layouts/* within this module.
-  # The default root.html.heex file contains the HTML
-  # skeleton of your application, namely HTML headers
-  # and other static content.
   embed_templates "layouts/*"
 
-  @doc """
-  Renders your app layout.
-
-  This function is typically invoked from every template,
-  and it often contains your application menu, sidebar,
-  or similar.
-
-  ## Examples
-
-      <Layouts.app flash={@flash}>
-        <h1>Content</h1>
-      </Layouts.app>
-
-  """
-  attr :flash, :map, required: true, doc: "the map of flash messages"
-
-  attr :current_scope, :map,
-    default: nil,
-    doc: "the current [scope](https://phoenix.hexdocs.pm/scopes.html)"
-
+  attr :flash, :map, required: true
+  attr :current_scope, :map, default: nil
+  attr :nav_categories, :list, default: []
+  attr :unread_count, :integer, default: 0
+  attr :nav_query, :string, default: ""
   slot :inner_block, required: true
 
   def app(assigns) do
     ~H"""
-    <header class="navbar px-4 sm:px-6 lg:px-8">
-      <div class="flex-1">
-        <a href="/" class="flex-1 flex w-fit items-center gap-2">
-          <img src={~p"/images/logo.svg"} width="36" />
-          <span class="text-sm font-semibold">v{Application.spec(:phoenix, :vsn)}</span>
-        </a>
-      </div>
-      <div class="flex-none">
-        <ul class="flex flex-column px-1 space-x-4 items-center">
-          <li>
-            <a href="https://phoenixframework.org/" class="btn btn-ghost">Website</a>
-          </li>
-          <li>
-            <a href="https://github.com/phoenixframework/phoenix" class="btn btn-ghost">GitHub</a>
-          </li>
-          <li>
-            <.theme_toggle />
-          </li>
-          <li>
-            <a href="https://phoenix.hexdocs.pm/overview.html" class="btn btn-primary">
-              Get Started <span aria-hidden="true">&rarr;</span>
-            </a>
-          </li>
-        </ul>
-      </div>
-    </header>
+    <.flex direction="col" class="min-h-dvh gap-[clamp(1.25rem,2vh,2.75rem)]">
+      <.flex justify="center" class="w-full border-b border-neutral-200 bg-white">
+        <div class="w-full px-4 sm:px-8 lg:px-12 xl:px-16">
+          <.navbar
+            id="top-nav"
+            variant="default"
+            color="white"
+            border="none"
+            padding="medium"
+            content_position="between"
+            nav_wrapper_class="flex w-full flex-wrap items-center gap-3 py-2 md:flex-nowrap md:gap-4"
+          >
+            <:start_content>
+              <.nav_button id="nav-home" navigate={~p"/"}>
+                <.flex align="center" gap="small" wrap="nowrap">
+                  <.icon name="hero-cpu-chip" class="size-5 shrink-0" />
+                  <span class="font-semibold tracking-tight">Odin Market</span>
+                </.flex>
+              </.nav_button>
+            </:start_content>
 
-    <main class="px-4 py-20 sm:px-6 lg:px-8">
-      <div class="mx-auto max-w-2xl space-y-4">
-        {render_slot(@inner_block)}
-      </div>
-    </main>
+            <.flex
+              id="nav-links"
+              align="center"
+              gap="small"
+              wrap="wrap"
+              class="min-w-0 w-full basis-full md:w-auto md:basis-0 md:flex-1 md:flex-nowrap"
+            >
+              <.nav_button id="nav-browse" navigate={~p"/browse"}>Browse</.nav_button>
+              <.nav_button id="nav-forum" navigate={~p"/forum"}>Forum</.nav_button>
+              <%= if user = scope_user(@current_scope) do %>
+                <.nav_button id="nav-dashboard" navigate={~p"/dashboard"}>Dashboard</.nav_button>
+                <.flex align="center" gap="small" wrap="nowrap">
+                  <.nav_button id="cart-link" navigate={~p"/cart"}>Cart</.nav_button>
+                  <.badge
+                    :if={cart_count(@current_scope) > 0}
+                    id="cart-badge"
+                    color="natural"
+                    size="small"
+                  >
+                    {cart_count(@current_scope)}
+                  </.badge>
+                </.flex>
+                <.nav_button id="nav-orders" navigate={~p"/dashboard/orders"}>Orders</.nav_button>
+                <%= if vendor?(user) do %>
+                  <.nav_button id="nav-shop" navigate={~p"/dashboard/shop"}>Shop</.nav_button>
+                  <.nav_button id="nav-listings" navigate={~p"/dashboard/listings"}>
+                    Listings
+                  </.nav_button>
+                  <.nav_button id="nav-vendor-orders" navigate={~p"/dashboard/sales"}>
+                    Sales
+                  </.nav_button>
+                <% end %>
+                <.flex align="center" gap="small" wrap="nowrap">
+                  <.nav_button id="inbox-link" navigate={~p"/inbox"}>Inbox</.nav_button>
+                  <.badge :if={@unread_count > 0} id="unread-badge" color="natural" size="small">
+                    {@unread_count}
+                  </.badge>
+                </.flex>
+              <% end %>
+              <.form_wrapper
+                id="nav-search"
+                for={%{}}
+                action={~p"/browse"}
+                method="get"
+                variant="transparent"
+                rounded="small"
+                space="extra_small"
+                class="w-full min-w-0 basis-full md:ms-auto md:w-64 md:max-w-xs md:flex-none"
+              >
+                <.text_field
+                  id="nav-q"
+                  name="q"
+                  value={@nav_query}
+                  placeholder="Search"
+                  size="medium"
+                  rounded="small"
+                  color="natural"
+                />
+              </.form_wrapper>
+            </.flex>
 
-    <.flash_group flash={@flash} />
+            <:end_content>
+              <.flex
+                id="nav-account-actions"
+                align="center"
+                justify="end"
+                gap="small"
+                wrap="nowrap"
+                class="ms-auto shrink-0"
+              >
+                <%= if user = scope_user(@current_scope) do %>
+                  <.nav_button
+                    :if={staff?(user)}
+                    id="nav-staff"
+                    navigate={~p"/staff"}
+                    variant="outline"
+                  >
+                    Desk
+                  </.nav_button>
+                  <.nav_button id="nav-account" navigate={~p"/dashboard/settings"} variant="outline">
+                    Settings
+                  </.nav_button>
+                  <.nav_button id="nav-sign-out" href={~p"/sign-out"} variant="default" color="dark">
+                    Sign out
+                  </.nav_button>
+                <% else %>
+                  <.nav_button
+                    id="nav-sign-in"
+                    navigate={~p"/sign-in"}
+                    variant="default"
+                    color="natural"
+                  >
+                    Sign in
+                  </.nav_button>
+                  <.nav_button
+                    id="nav-register"
+                    navigate={~p"/register"}
+                    variant="default"
+                    color="dark"
+                  >
+                    Sign up
+                  </.nav_button>
+                <% end %>
+              </.flex>
+            </:end_content>
+          </.navbar>
+        </div>
+      </.flex>
+
+      <.flex justify="center" class="w-full flex-1">
+        <div class="odin-page w-full px-4 sm:px-8 lg:px-12 xl:px-16">
+          {render_slot(@inner_block)}
+        </div>
+      </.flex>
+
+      <.flex justify="center" class="w-full">
+        <div class="w-full px-4 pb-8 sm:px-8 lg:px-12 xl:px-16">
+          <.divider />
+          <.footer
+            id="site-footer"
+            variant="default"
+            color="white"
+            border="none"
+            padding="medium"
+            space="small"
+          >
+            <.flex align="center" justify="between" gap="medium" class="w-full">
+              <p>Embedded electronics. Parts, builds, and the ideas behind them.</p>
+              <.flex align="center" gap="small" wrap="nowrap">
+                <.nav_button id="footer-privacy" navigate={~p"/privacy"}>Privacy</.nav_button>
+                <.nav_button id="footer-terms" navigate={~p"/terms"}>Terms</.nav_button>
+              </.flex>
+            </.flex>
+          </.footer>
+        </div>
+      </.flex>
+    </.flex>
+    <.flash_group
+      flash={@flash}
+      position=""
+      class="fixed top-4 left-1/2 z-50 w-[min(24rem,calc(100%-2rem))] -translate-x-1/2"
+    />
     """
   end
 
-  @doc """
-  Shows the flash group with standard titles and content.
+  attr :id, :string, required: true
+  attr :navigate, :string, default: nil
+  attr :href, :string, default: nil
+  attr :variant, :string, default: "transparent"
+  attr :color, :string, default: "natural"
+  slot :inner_block, required: true
 
-  ## Examples
-
-      <.flash_group flash={@flash} />
-  """
-  attr :flash, :map, required: true, doc: "the map of flash messages"
-  attr :id, :string, default: "flash-group", doc: "the optional id of flash container"
-
-  def flash_group(assigns) do
+  defp nav_button(%{href: href} = assigns) when is_binary(href) do
     ~H"""
-    <div id={@id} aria-live="polite">
-      <.flash kind={:info} flash={@flash} />
-      <.flash kind={:error} flash={@flash} />
-
-      <.flash
-        id="client-error"
-        kind={:error}
-        title={gettext("We can't find the internet")}
-        phx-disconnected={
-          show(".phx-client-error #client-error")
-          |> JS.remove_attribute("hidden", to: ".phx-client-error #client-error")
-        }
-        phx-connected={hide("#client-error") |> JS.set_attribute({"hidden", ""})}
-        hidden
-      >
-        {gettext("Attempting to reconnect")}
-        <.icon name="hero-arrow-path" class="ml-1 size-3 motion-safe:animate-spin" />
-      </.flash>
-
-      <.flash
-        id="server-error"
-        kind={:error}
-        title={gettext("Something went wrong!")}
-        phx-disconnected={
-          show(".phx-server-error #server-error")
-          |> JS.remove_attribute("hidden", to: ".phx-server-error #server-error")
-        }
-        phx-connected={hide("#server-error") |> JS.set_attribute({"hidden", ""})}
-        hidden
-      >
-        {gettext("Attempting to reconnect")}
-        <.icon name="hero-arrow-path" class="ml-1 size-3 motion-safe:animate-spin" />
-      </.flash>
-    </div>
+    <.button_link
+      id={@id}
+      href={@href}
+      variant={@variant}
+      color={@color}
+      size="medium"
+      rounded="small"
+    >
+      {render_slot(@inner_block)}
+    </.button_link>
     """
   end
 
-  @doc """
-  Provides dark vs light theme toggle based on themes defined in app.css.
-
-  See <head> in root.html.heex which applies the theme before page load.
-  """
-  def theme_toggle(assigns) do
+  defp nav_button(assigns) do
     ~H"""
-    <div class="card relative flex flex-row items-center border-2 border-base-300 bg-base-300 rounded-full">
-      <div class="absolute w-1/3 h-full rounded-full border-1 border-base-200 bg-base-100 brightness-200 left-0 [[data-theme=light]_&]:left-1/3 [[data-theme=dark]_&]:left-2/3 [[data-theme-source=system]_&]:!left-0 transition-[left]" />
-
-      <button
-        class="flex p-2 cursor-pointer w-1/3"
-        phx-click={JS.dispatch("phx:set-theme")}
-        data-phx-theme="system"
-      >
-        <.icon name="hero-computer-desktop-micro" class="size-4 opacity-75 hover:opacity-100" />
-      </button>
-
-      <button
-        class="flex p-2 cursor-pointer w-1/3"
-        phx-click={JS.dispatch("phx:set-theme")}
-        data-phx-theme="light"
-      >
-        <.icon name="hero-sun-micro" class="size-4 opacity-75 hover:opacity-100" />
-      </button>
-
-      <button
-        class="flex p-2 cursor-pointer w-1/3"
-        phx-click={JS.dispatch("phx:set-theme")}
-        data-phx-theme="dark"
-      >
-        <.icon name="hero-moon-micro" class="size-4 opacity-75 hover:opacity-100" />
-      </button>
-    </div>
+    <.button_link
+      id={@id}
+      navigate={@navigate}
+      variant={@variant}
+      color={@color}
+      size="medium"
+      rounded="small"
+    >
+      {render_slot(@inner_block)}
+    </.button_link>
     """
   end
+
+  defp scope_user(%{user: user}) when not is_nil(user), do: user
+  defp scope_user(_), do: nil
+
+  defp vendor?(user), do: OdinMarket.Accounts.vendor?(user)
+
+  defp staff?(user), do: OdinMarket.Moderation.staff?(user)
+
+  defp cart_count(%{cart_count: count}) when is_integer(count), do: count
+  defp cart_count(_), do: 0
 end

@@ -1,0 +1,26 @@
+<div class="flex min-h-dvh items-center justify-center bg-white px-[clamp(1rem,4vw,3rem)] py-[clamp(2rem,8vh,5rem)]">
+  <div class="odin-auth">
+    <.link
+      id="auth-home"
+      navigate={~p"/"}
+      class="mb-6 inline-flex text-sm font-semibold tracking-tight text-neutral-900"
+    >
+      Odin Market
+    </.link>
+    <p
+      :if={msg = Phoenix.Flash.get(@flash, :error)}
+      id="auth-flash"
+      class="mb-4 rounded-md border border-neutral-300 bg-neutral-100 px-4 py-3 text-center text-sm text-neutral-900"
+    >
+      {msg}
+    </p>
+    <p
+      :if={msg = Phoenix.Flash.get(@flash, :info)}
+      id="auth-notice"
+      class="mb-4 rounded-md border border-neutral-300 bg-neutral-100 px-4 py-3 text-center text-sm text-neutral-900"
+    >
+      {msg}
+    </p>
+    {@inner_content}
+  </div>
+</div>

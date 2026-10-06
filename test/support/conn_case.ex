@@ -27,6 +27,8 @@ defmodule OdinMarketWeb.ConnCase do
       # Import conveniences for testing with connections
       import Plug.Conn
       import Phoenix.ConnTest
+      import Phoenix.LiveViewTest
+      import OdinMarket.DataCase
       import OdinMarketWeb.ConnCase
     end
   end
@@ -34,5 +36,19 @@ defmodule OdinMarketWeb.ConnCase do
   setup tags do
     OdinMarket.DataCase.setup_sandbox(tags)
     {:ok, conn: Phoenix.ConnTest.build_conn()}
+  end
+
+  def log_in(conn, user) do
+    strategy = AshAuthentication.Info.strategy!(OdinMarket.Accounts.User, :password)
+
+    {:ok, signed_in} =
+      AshAuthentication.Strategy.action(strategy, :sign_in, %{
+        "email" => to_string(user.email),
+        "password" => "password123456"
+      })
+
+    conn
+    |> Phoenix.ConnTest.init_test_session(%{})
+    |> AshAuthentication.Plug.Helpers.store_in_session(signed_in)
   end
 end

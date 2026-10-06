@@ -1,4 +1,5 @@
 import Config
+config :ash, policies: [show_policy_breakdowns?: true]
 
 # Configure your database
 config :odin_market, OdinMarket.Repo,
@@ -53,7 +54,7 @@ config :odin_market, OdinMarketWeb.Endpoint,
 # different ports.
 
 # Enable dev routes for dashboard and mailbox
-config :odin_market, dev_routes: true
+config :odin_market, dev_routes: true, token_signing_secret: "uGORTIBG6+InTeE5RBFljPbu4whBorYt"
 
 # Do not include metadata nor timestamps in development logs
 config :logger, :default_formatter, format: "[$level] $message\n"

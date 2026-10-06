@@ -1,5 +1,47 @@
 import Config
 
+# gitignored .env for local dev. a shell value wins. test and prod skip this file.
+if config_env() == :dev do
+  env_file = Path.expand("../.env", __DIR__)
+
+  if File.exists?(env_file) do
+    env_file
+    |> File.stream!()
+    |> Enum.each(fn line ->
+      line = String.trim(line)
+
+      line =
+        if String.starts_with?(line, "export "),
+          do: String.replace_prefix(line, "export ", ""),
+          else: line
+
+      cond do
+        line == "" or String.starts_with?(line, "#") ->
+          :ok
+
+        true ->
+          case String.split(line, "=", parts: 2) do
+            [key, value] ->
+              key = String.trim(key)
+
+              value =
+                value
+                |> String.trim()
+                |> String.trim("\"")
+                |> String.trim("'")
+
+              if key != "" and value != "" and System.get_env(key) in [nil, ""] do
+                System.put_env(key, value)
+              end
+
+            _ ->
+              :ok
+          end
+      end
+    end)
+  end
+end
+
 # config/runtime.exs is executed for all environments, including
 # during releases. It is executed after compilation and before the
 # system starts, so it is typically used to load production configuration
@@ -85,6 +127,11 @@ if config_env() == :prod do
     ],
     secret_key_base: secret_key_base
 
+  config :odin_market,
+    token_signing_secret:
+      System.get_env("TOKEN_SIGNING_SECRET") ||
+        raise("Missing environment variable `TOKEN_SIGNING_SECRET`!")
+
   # ## SSL Support
   #
   # To get SSL working, you will need to add the `https` key
@@ -134,4 +181,16 @@ if config_env() == :prod do
   #     config :swoosh, :api_client, Swoosh.ApiClient.Req
   #
   # See https://swoosh.hexdocs.pm/Swoosh.html#module-installation for details.
+end
+
+stripe_config =
+  [
+    api_key: System.get_env("STRIPE_SECRET_KEY"),
+    public_key: System.get_env("STRIPE_PUBLISHABLE_KEY"),
+    webhook_secret: System.get_env("STRIPE_WEBHOOK_SECRET")
+  ]
+  |> Enum.reject(fn {_key, value} -> is_nil(value) or value == "" end)
+
+if stripe_config != [] do
+  config :stripity_stripe, stripe_config
 end

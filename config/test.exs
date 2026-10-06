@@ -1,4 +1,7 @@
 import Config
+config :odin_market, token_signing_secret: "sIIuFgwpgXB3CZf6iejdb/xbCPfNhJGT"
+config :bcrypt_elixir, log_rounds: 1
+config :ash, policies: [show_policy_breakdowns?: true], disable_async?: true
 
 # Configure your database
 #

@@ -55,4 +55,84 @@ defmodule OdinMarket.DataCase do
       end)
     end)
   end
+
+  def register_user(attrs \\ %{}) do
+    email = attrs[:email] || "user-#{System.unique_integer([:positive])}@odin.test"
+    display_name = attrs[:display_name] || "Tester"
+    username = attrs[:username] || username_for(display_name)
+
+    {:ok, user} =
+      Ash.create(
+        OdinMarket.Accounts.User,
+        %{
+          email: email,
+          password: "password123456",
+          password_confirmation: "password123456",
+          username: username,
+          display_name: display_name,
+          policy_accepted: true
+        },
+        action: :register_with_password,
+        authorize?: false
+      )
+
+    {:ok, user} = Ash.update(user, %{}, action: :mark_confirmed, authorize?: false)
+
+    if attrs[:role] == :vendor do
+      {:ok, user} = OdinMarket.Accounts.grant_vendor(user)
+      user
+    else
+      user
+    end
+  end
+
+  defp username_for(display_name) do
+    base =
+      display_name
+      |> to_string()
+      |> String.downcase()
+      |> String.replace(~r/[^a-z0-9]/, "")
+      |> String.slice(0, 10)
+
+    base = if String.length(base) < 3, do: "member", else: base
+
+    suffix =
+      System.unique_integer([:positive])
+      |> Integer.to_string()
+      |> String.slice(-6, 6)
+      |> String.pad_leading(6, "0")
+
+    base <> suffix
+  end
+
+  def ensure_category(name, slug) do
+    {:ok, category} =
+      Ash.create(OdinMarket.Catalog.Category, %{name: name, slug: slug},
+        action: :create,
+        authorize?: false
+      )
+
+    category
+  end
+
+  def create_listing(actor, attrs) do
+    params =
+      Map.merge(
+        %{
+          title: "Listing #{System.unique_integer([:positive])}",
+          description: "A part for the bench",
+          kind: :stock,
+          price_cents: 1_200,
+          qty_available: 5,
+          category_id: attrs[:category_id],
+          status: :active
+        },
+        Map.new(attrs)
+      )
+
+    {:ok, listing} =
+      Ash.create(OdinMarket.Catalog.Listing, params, action: :publish, actor: actor)
+
+    listing
+  end
 end
